@@ -3,8 +3,11 @@ import { createTestDatabase } from '../../db/test-helpers';
 import { categories, publishers, games } from '../../db/schema';
 import type { Database } from './db';
 import {
+    getAllCategories,
     getAllGames,
     getAllGameIds,
+    getAllPublishers,
+    getFilteredGames,
     getGameById,
 } from './games';
 
@@ -50,6 +53,79 @@ describe('games data-access helpers', () => {
         const ids = await getAllGameIds(db);
         const all = await getAllGames(db);
         expect(ids).toEqual(all.map((g) => g.id));
+    });
+
+    it('returns categories and publishers in display order', async () => {
+        await seedGames(db, 2);
+
+        const categoriesList = await getAllCategories(db);
+        const publishersList = await getAllPublishers(db);
+
+        expect(categoriesList.map((category) => category.name)).toEqual(['Strategy']);
+        expect(publishersList.map((publisher) => publisher.name)).toEqual(['Pub One']);
+    });
+
+    it('filters games by category and publisher together', async () => {
+        const [strategy] = await db
+            .insert(categories)
+            .values({ name: 'Strategy', description: 'cat' })
+            .returning({ id: categories.id });
+        const [racing] = await db
+            .insert(categories)
+            .values({ name: 'Racing', description: 'cat' })
+            .returning({ id: categories.id });
+        const [pubOne] = await db
+            .insert(publishers)
+            .values({ name: 'Pub One', description: 'pub' })
+            .returning({ id: publishers.id });
+        const [pubTwo] = await db
+            .insert(publishers)
+            .values({ name: 'Pub Two', description: 'pub' })
+            .returning({ id: publishers.id });
+
+        await db.insert(games).values([
+            { title: 'Alpha', description: 'Alpha description', starRating: 4.0, categoryId: strategy.id, publisherId: pubOne.id },
+            { title: 'Bravo', description: 'Bravo description', starRating: 4.5, categoryId: strategy.id, publisherId: pubTwo.id },
+            { title: 'Charlie', description: 'Charlie description', starRating: 3.5, categoryId: racing.id, publisherId: pubOne.id },
+        ]);
+
+        const filtered = await getFilteredGames(db, {
+            categoryIds: [strategy.id],
+            publisherIds: [pubOne.id],
+        });
+
+        expect(filtered.map((game) => game.title)).toEqual(['Alpha']);
+    });
+
+    it('filters games by category or publisher independently', async () => {
+        const [strategy] = await db
+            .insert(categories)
+            .values({ name: 'Strategy', description: 'cat' })
+            .returning({ id: categories.id });
+        const [racing] = await db
+            .insert(categories)
+            .values({ name: 'Racing', description: 'cat' })
+            .returning({ id: categories.id });
+        const [pubOne] = await db
+            .insert(publishers)
+            .values({ name: 'Pub One', description: 'pub' })
+            .returning({ id: publishers.id });
+        const [pubTwo] = await db
+            .insert(publishers)
+            .values({ name: 'Pub Two', description: 'pub' })
+            .returning({ id: publishers.id });
+
+        await db.insert(games).values([
+            { title: 'Alpha', description: 'Alpha description', starRating: 4.0, categoryId: strategy.id, publisherId: pubOne.id },
+            { title: 'Bravo', description: 'Bravo description', starRating: 4.5, categoryId: strategy.id, publisherId: pubTwo.id },
+            { title: 'Charlie', description: 'Charlie description', starRating: 3.5, categoryId: racing.id, publisherId: pubOne.id },
+        ]);
+
+        const strategyOnly = await getFilteredGames(db, { categoryIds: [strategy.id] });
+        const pubOneOnly = await getFilteredGames(db, { publisherIds: [pubOne.id] });
+
+        expect(strategyOnly.map((game) => game.title)).toEqual(['Alpha', 'Bravo']);
+        expect(pubOneOnly.map((game) => game.title)).toEqual(['Alpha', 'Charlie']);
     });
 
     it('fetches a single game by id', async () => {
