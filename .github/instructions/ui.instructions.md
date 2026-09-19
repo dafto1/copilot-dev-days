@@ -51,6 +51,14 @@ Refer to technology-specific instruction files:
 - Use props for configuration, not duplication
 - Document component APIs with TypeScript types
 
+### Commenting and Documentation
+
+- Comment the intent behind a decision, not the mechanics of the code below it.
+- Explain why a branch, workaround, or data contract exists, especially when the reasoning is not obvious from the names alone.
+- Remove or rewrite comments that merely restate the code in plain English; they go stale quickly and add noise.
+- Treat outdated comments as bugs: update them in the same change that changes the linked behavior.
+- Use TSDoc/JSDoc for exported APIs and document reusable component `Props` interfaces so the component contract is self-explanatory.
+
 ## Development Workflow
 
 1. **Choose the right tool**: 
