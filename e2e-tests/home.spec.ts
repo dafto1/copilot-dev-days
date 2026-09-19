@@ -24,4 +24,18 @@ test.describe('Home Page', () => {
     // Check that the welcome message is present using more specific locator
     await expect(page.getByText('Find your next game! And maybe even back one! Explore our collection!')).toBeVisible();
   });
+
+  test('should filter games by category and publisher', async ({ page }) => {
+    await test.step('Select a specific category and publisher', async () => {
+      await page.locator('input[aria-label="Filter by Strategy"]').check();
+      await page.getByTestId('publisher-filter').selectOption({ label: 'CodeForge Studios' });
+      await page.getByTestId('apply-filters-button').click();
+    });
+
+    await test.step('Verify only matching games remain visible', async () => {
+      const visibleCards = page.locator('[data-testid="game-card"]:visible');
+      await expect(visibleCards).toHaveCount(1);
+      await expect(visibleCards.filter({ hasText: 'DevOps Dominion' })).toBeVisible();
+    });
+  });
 });
